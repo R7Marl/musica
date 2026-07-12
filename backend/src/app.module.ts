@@ -6,6 +6,7 @@ import { createTypeOrmOptions } from './config/typeorm.config';
 import { BusinessModule } from './modules/business/business.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ColaModule } from './modules/cola/cola.module';
+import { YoutubeModule } from './modules/youtube/youtube.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { ColaModule } from './modules/cola/cola.module';
     AuthModule,
     BusinessModule,
     ColaModule,
+    YoutubeModule,
   ],
   controllers: [],
   providers: [],

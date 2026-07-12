@@ -106,6 +106,14 @@ El backend corre migraciones automaticamente antes de iniciar la API. No hace
 falta instalar dependencias en el host para levantar produccion: Docker las
 instala dentro de las imagenes.
 
+Para habilitar busqueda de canciones dentro de QFit, configurar en `.env`:
+
+```text
+YOUTUBE_API_KEY=...
+```
+
+Si falta esa key, los usuarios todavia pueden pegar links manualmente.
+
 ## Dominios
 
 En produccion, Caddy expone HTTPS automatico:

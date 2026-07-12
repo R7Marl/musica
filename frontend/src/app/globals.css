@@ -900,6 +900,108 @@ h2 {
   gap: 10px;
 }
 
+.youtube-search-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.youtube-search-input {
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(20, 127, 109, 0.28);
+  border-radius: var(--radius);
+  background: #fff;
+  padding: 0 12px;
+}
+
+.youtube-search-input svg {
+  flex: 0 0 auto;
+  color: var(--primary-strong);
+}
+
+.youtube-search-input input {
+  min-width: 0;
+  width: 100%;
+  min-height: 46px;
+  border: 0;
+  padding: 0;
+  font-size: 1rem;
+  outline: none;
+}
+
+.youtube-results {
+  display: grid;
+  gap: 8px;
+}
+
+.youtube-result {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(20, 127, 109, 0.16);
+  border-radius: var(--radius);
+  background: #fff;
+  padding: 8px;
+}
+
+.youtube-result img {
+  width: 86px;
+  aspect-ratio: 16 / 9;
+  border-radius: 7px;
+  object-fit: cover;
+  background: var(--surface-soft);
+}
+
+.youtube-result strong,
+.youtube-result span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.youtube-result strong {
+  color: var(--foreground);
+  font-size: 0.95rem;
+  line-height: 1.25;
+}
+
+.youtube-result span {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.youtube-result .button {
+  min-height: 40px;
+}
+
+.youtube-more-button {
+  justify-self: center;
+}
+
+.link-fallback {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.link-fallback::before,
+.link-fallback::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: rgba(20, 127, 109, 0.16);
+}
+
 .add-song-form input {
   min-height: 50px;
   border-color: rgba(20, 127, 109, 0.28);
@@ -1491,6 +1593,7 @@ h2 {
   }
 
   .add-song-form,
+  .youtube-search-form,
   .form-grid,
   .form-grid.slim,
   .queue-card,
@@ -1518,6 +1621,19 @@ h2 {
 
   .song-thumb {
     width: 78px;
+  }
+
+  .youtube-result {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .youtube-result img {
+    width: 76px;
+  }
+
+  .youtube-result .button {
+    grid-column: 1 / -1;
+    width: 100%;
   }
 
   .song-main strong {

@@ -10,6 +10,7 @@ import {
   Music,
   Plus,
   RefreshCw,
+  Search,
   ThumbsUp,
   Trash2,
   UserRound,
@@ -22,6 +23,7 @@ import {
   PublicQueueResponse,
   QueueSong,
   SongRequestHistoryItem,
+  YoutubeSearchResult,
 } from "@/lib/types";
 import { GoogleSignIn } from "./GoogleSignIn";
 import { PublicAccountAccess } from "./PublicAccountAccess";
@@ -44,6 +46,13 @@ export function PublicQueue({ queueSlug, queueName }: PublicQueueProps) {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [readdingId, setReaddingId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<YoutubeSearchResult[]>([]);
+  const [searchNextPageToken, setSearchNextPageToken] = useState<string | null>(
+    null,
+  );
+  const [searching, setSearching] = useState(false);
+  const [addingVideoId, setAddingVideoId] = useState<string | null>(null);
 
   const currentSong = useMemo(
     () => queueState?.queue.find((song) => song.isPlaying) ?? null,
@@ -108,6 +117,83 @@ export function PublicQueue({ queueSlug, queueName }: PublicQueueProps) {
       setError(err instanceof Error ? err.message : "No se pudo agregar");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleYoutubeSearch(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
+    setMessage("");
+    setError("");
+
+    if (searchQuery.trim().length < 3) {
+      setError("Escribi al menos 3 caracteres para buscar.");
+      return;
+    }
+
+    try {
+      setSearching(true);
+      const response = await api.searchYoutube(searchQuery);
+      setSearchResults(response.results);
+      setSearchNextPageToken(response.nextPageToken);
+
+      if (!response.results.length) {
+        setMessage("No encontramos resultados. Proba con otro nombre.");
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "No se pudo buscar en YouTube. Proba pegando el link.",
+      );
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  async function handleLoadMoreResults() {
+    if (!searchNextPageToken || searching) return;
+
+    setError("");
+    try {
+      setSearching(true);
+      const response = await api.searchYoutube(searchQuery, searchNextPageToken);
+      setSearchResults((currentResults) => [
+        ...currentResults,
+        ...response.results,
+      ]);
+      setSearchNextPageToken(response.nextPageToken);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo buscar mas");
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  async function handleAddSearchResult(result: YoutubeSearchResult) {
+    setMessage("");
+    setError("");
+
+    if (!session) {
+      setError("Inicia sesion para agregar canciones.");
+      return;
+    }
+
+    try {
+      setAddingVideoId(result.videoId);
+      await api.addSong(queueSlug, result.youtubeUrl, session.accessToken);
+      setVideoTitles((currentTitles) => ({
+        ...currentTitles,
+        [result.videoId]: result.title,
+      }));
+      setMessage("Cancion agregada a la playlist");
+      await loadQueue();
+      if (historyOpen) {
+        await loadHistory();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo agregar");
+    } finally {
+      setAddingVideoId(null);
     }
   }
 
@@ -358,8 +444,58 @@ export function PublicQueue({ queueSlug, queueName }: PublicQueueProps) {
         <div>
           <h2>Agregar cancion</h2>
           <p className="muted">
-            Pega un link de YouTube. Tu pedido queda asociado a tu cuenta.
+            Busca un tema en YouTube o pega un link. Tu pedido queda asociado a tu
+            cuenta.
           </p>
+        </div>
+        <form className="youtube-search-form" onSubmit={handleYoutubeSearch}>
+          <div className="youtube-search-input">
+            <Search size={18} />
+            <input
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Buscar artista o cancion"
+              type="search"
+              value={searchQuery}
+            />
+          </div>
+          <button className="button primary" disabled={searching} type="submit">
+            {searching ? "Buscando..." : "Buscar"}
+          </button>
+        </form>
+        {searchResults.length ? (
+          <div className="youtube-results">
+            {searchResults.map((result) => (
+              <article className="youtube-result" key={result.videoId}>
+                <img alt="" src={result.thumbnailUrl} />
+                <div>
+                  <strong>{result.title}</strong>
+                  <span>{result.channelTitle}</span>
+                </div>
+                <button
+                  className="button"
+                  disabled={addingVideoId === result.videoId}
+                  onClick={() => void handleAddSearchResult(result)}
+                  type="button"
+                >
+                  <Plus size={16} />
+                  {addingVideoId === result.videoId ? "Agregando" : "Agregar"}
+                </button>
+              </article>
+            ))}
+            {searchNextPageToken ? (
+              <button
+                className="button youtube-more-button"
+                disabled={searching}
+                onClick={() => void handleLoadMoreResults()}
+                type="button"
+              >
+                Ver mas resultados
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        <div className="link-fallback">
+          <span>Pegar link manualmente</span>
         </div>
         <form className="add-song-form" onSubmit={handleSubmit}>
           <input

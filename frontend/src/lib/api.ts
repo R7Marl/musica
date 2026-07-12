@@ -7,6 +7,7 @@ import {
   PublicBusinessResponse,
   PublicQueueResponse,
   SongRequestHistoryItem,
+  YoutubeSearchResponse,
 } from "./types";
 
 function getApiUrl() {
@@ -82,6 +83,15 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ credential }),
     });
+  },
+  searchYoutube(query: string, pageToken?: string | null) {
+    const params = new URLSearchParams({ q: query });
+
+    if (pageToken) {
+      params.set("pageToken", pageToken);
+    }
+
+    return request<YoutubeSearchResponse>(`/youtube/search?${params.toString()}`);
   },
   registerPublicUser(input: {
     name: string;

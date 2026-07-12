@@ -8,6 +8,9 @@ export default () => ({
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID ?? '',
   },
+  youtube: {
+    apiKey: process.env.YOUTUBE_API_KEY ?? '',
+  },
   admin: {
     email: process.env.ADMIN_EMAIL ?? 'admin@cola-gym.local',
     password: process.env.ADMIN_PASSWORD ?? 'admin123456',
