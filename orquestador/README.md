@@ -105,3 +105,21 @@ O:
 El backend corre migraciones automaticamente antes de iniciar la API. No hace
 falta instalar dependencias en el host para levantar produccion: Docker las
 instala dentro de las imagenes.
+
+## Dominios
+
+En produccion, Caddy expone HTTPS automatico:
+
+```text
+https://hierroexpress.com.uy          frontend
+https://backend.hierroexpress.com.uy  backend
+```
+
+Los DNS deben apuntar al VPS:
+
+```text
+A hierroexpress.com.uy          51.222.28.59
+A backend.hierroexpress.com.uy  51.222.28.59
+```
+
+Abrir puertos 80 y 443 en el firewall del servidor/proveedor.

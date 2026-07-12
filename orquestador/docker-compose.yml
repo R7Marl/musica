@@ -1,6 +1,24 @@
 name: cola-gym-prod
 
 services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: cola-gym-caddy-prod
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - frontend
+    environment:
+      FRONTEND_DOMAIN: ${FRONTEND_DOMAIN:-hierroexpress.com.uy}
+      BACKEND_DOMAIN: ${BACKEND_DOMAIN:-backend.hierroexpress.com.uy}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
   postgres:
     image: postgres:16-alpine
     container_name: cola-gym-postgres-prod
@@ -70,3 +88,5 @@ services:
 
 volumes:
   cola_gym_postgres_prod_data:
+  caddy_data:
+  caddy_config:

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
+  ExternalLink,
   Headphones,
   ListMusic,
   Pause,
@@ -25,12 +26,15 @@ declare global {
           videoId?: string;
           playerVars?: {
             autoplay?: number;
+            playsinline?: number;
+            rel?: number;
           };
           events?: {
             onReady?: (event: {
               target: { playVideo: () => void };
             }) => void;
             onStateChange?: (event: { data: number }) => void;
+            onError?: (event: { data: number }) => void;
           };
         },
       ) => {
@@ -107,6 +111,31 @@ async function speakSongIntro(requestedByName: string) {
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
   });
+}
+
+function getYouTubePlayerErrorMessage(errorCode: number) {
+  if (errorCode === 2) {
+    return "El link de YouTube no es valido para el reproductor.";
+  }
+
+  if (errorCode === 5) {
+    return "YouTube no pudo reproducir este video en HTML5.";
+  }
+
+  if (errorCode === 100) {
+    return "El video fue eliminado, esta privado o no existe.";
+  }
+
+  if (errorCode === 101 || errorCode === 150) {
+    return "Este video no permite reproducirse dentro de QFit. Probalo abriendolo en YouTube.";
+  }
+
+  return "YouTube no permitio reproducir este video dentro del player.";
+}
+
+function normalizeYouTubeVideoId(value?: string | null) {
+  const match = value?.match(/[a-zA-Z0-9_-]{11}/);
+  return match?.[0] ?? null;
 }
 
 export function Player({ queueId }: { queueId: string }) {
@@ -188,6 +217,10 @@ export function Player({ queueId }: { queueId: string }) {
     }
   }, [loadQueue, queueId]);
 
+  const handleYouTubeError = useCallback((errorCode: number) => {
+    setError(getYouTubePlayerErrorMessage(errorCode));
+  }, []);
+
   useEffect(() => {
     void loadQueue();
     const interval = window.setInterval(() => void loadQueue(), 2000);
@@ -202,20 +235,29 @@ export function Player({ queueId }: { queueId: string }) {
   useEffect(() => {
     if (!currentSong) return;
     const songToPlay = currentSong;
+    const playableVideoId =
+      normalizeYouTubeVideoId(songToPlay.youtubeVideoId) ??
+      normalizeYouTubeVideoId(songToPlay.youtubeUrl);
+
+    if (!playableVideoId) {
+      setError("No se pudo obtener un ID valido de YouTube para esta cancion.");
+      return;
+    }
+    const normalizedVideoId = playableVideoId;
 
     async function announceSong() {
-      if (announcedVideoIdRef.current === songToPlay.youtubeVideoId) {
+      if (announcedVideoIdRef.current === normalizedVideoId) {
         return;
       }
 
-      announcedVideoIdRef.current = songToPlay.youtubeVideoId;
+      announcedVideoIdRef.current = normalizedVideoId;
       await speakSongIntro(songToPlay.requestedBy?.name ?? "un usuario");
     }
 
     async function loadCurrentVideo() {
       const isChangingVideo =
         currentVideoIdRef.current !== null &&
-        currentVideoIdRef.current !== songToPlay.youtubeVideoId;
+        currentVideoIdRef.current !== normalizedVideoId;
 
       if (isChangingVideo) {
         playerRef.current?.pauseVideo();
@@ -224,19 +266,21 @@ export function Player({ queueId }: { queueId: string }) {
       await announceSong();
 
       if (playerRef.current) {
-        if (currentVideoIdRef.current !== songToPlay.youtubeVideoId) {
-          currentVideoIdRef.current = songToPlay.youtubeVideoId;
-          playerRef.current.loadVideoById(songToPlay.youtubeVideoId);
+        if (currentVideoIdRef.current !== normalizedVideoId) {
+          currentVideoIdRef.current = normalizedVideoId;
+          playerRef.current.loadVideoById(normalizedVideoId);
         }
         return;
       }
 
       window.onYouTubeIframeAPIReady = () => {
-        currentVideoIdRef.current = songToPlay.youtubeVideoId;
+        currentVideoIdRef.current = normalizedVideoId;
         playerRef.current = new window.YT!.Player("youtube-player", {
-          videoId: songToPlay.youtubeVideoId,
+          videoId: normalizedVideoId,
           playerVars: {
             autoplay: 1,
+            playsinline: 1,
+            rel: 0,
           },
           events: {
             onReady: (event) => event.target.playVideo(),
@@ -245,6 +289,7 @@ export function Player({ queueId }: { queueId: string }) {
                 void playNext();
               }
             },
+            onError: (event) => handleYouTubeError(event.data),
           },
         });
       };
@@ -261,7 +306,7 @@ export function Player({ queueId }: { queueId: string }) {
     }
 
     void loadCurrentVideo();
-  }, [currentSong, playNext]);
+  }, [currentSong, handleYouTubeError, playNext]);
 
   useEffect(() => {
     const songs = state?.songs ?? [];
@@ -400,6 +445,17 @@ export function Player({ queueId }: { queueId: string }) {
         </div>
 
         {error ? <p className="form-error">{error}</p> : null}
+        {error && currentSong ? (
+          <a
+            className="button"
+            href={currentSong.youtubeUrl}
+            rel="noreferrer"
+            target="_blank"
+          >
+            <ExternalLink size={18} />
+            Abrir en YouTube
+          </a>
+        ) : null}
 
         <div className="player-queue-title">
           <div>

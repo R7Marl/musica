@@ -350,7 +350,9 @@ export class ColaService {
       const hostname = parsedUrl.hostname.replace(/^www\./, '');
 
       if (hostname === 'youtu.be') {
-        const id = parsedUrl.pathname.split('/').filter(Boolean)[0];
+        const id = this.normalizeYoutubeVideoId(
+          parsedUrl.pathname.split('/').filter(Boolean)[0],
+        );
 
         if (id) {
           return id;
@@ -360,7 +362,7 @@ export class ColaService {
       if (
         ['youtube.com', 'm.youtube.com', 'music.youtube.com'].includes(hostname)
       ) {
-        const id = parsedUrl.searchParams.get('v');
+        const id = this.normalizeYoutubeVideoId(parsedUrl.searchParams.get('v'));
 
         if (id) {
           return id;
@@ -370,8 +372,10 @@ export class ColaService {
           /^\/(?:embed|shorts)\/([^/?]+)/,
         );
 
-        if (embedMatch?.[1]) {
-          return embedMatch[1];
+        const embedId = this.normalizeYoutubeVideoId(embedMatch?.[1]);
+
+        if (embedId) {
+          return embedId;
         }
       }
     } catch {
@@ -379,5 +383,10 @@ export class ColaService {
     }
 
     throw new BadRequestException('Solo se aceptan links de YouTube');
+  }
+
+  private normalizeYoutubeVideoId(value?: string | null): string | null {
+    const match = value?.match(/[a-zA-Z0-9_-]{11}/);
+    return match?.[0] ?? null;
   }
 }
