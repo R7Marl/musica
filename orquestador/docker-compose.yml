@@ -1,0 +1,72 @@
+name: cola-gym-prod
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cola-gym-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-cola_gym}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-cola_gym}
+      POSTGRES_DB: ${DB_DATABASE:-cola_gym}
+    volumes:
+      - cola_gym_postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${DB_USERNAME:-cola_gym} -d ${DB_DATABASE:-cola_gym}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ../backend
+      target: production
+    container_name: cola-gym-backend-prod
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-cola_gym}
+      DB_PASSWORD: ${DB_PASSWORD:-cola_gym}
+      DB_DATABASE: ${DB_DATABASE:-cola_gym}
+      DB_SSL: "false"
+      DB_SYNCHRONIZE: "false"
+      DB_DROP_SCHEMA: "false"
+      JWT_SECRET: ${JWT_SECRET:-change-this-secret-before-real-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-owner@cola-gym.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-owner123456}
+    ports:
+      - "${BACKEND_PUBLIC_PORT:-3000}:3000"
+
+  frontend:
+    build:
+      context: ../frontend
+      target: production
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-auto}
+        NEXT_PUBLIC_ROOT_DOMAIN: ${NEXT_PUBLIC_ROOT_DOMAIN:-localhost}
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    container_name: cola-gym-frontend-prod
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-auto}
+      NEXT_PUBLIC_ROOT_DOMAIN: ${NEXT_PUBLIC_ROOT_DOMAIN:-localhost}
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    ports:
+      - "${FRONTEND_PUBLIC_PORT:-3001}:3001"
+
+volumes:
+  cola_gym_postgres_prod_data:

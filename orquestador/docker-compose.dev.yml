@@ -1,0 +1,112 @@
+name: cola-gym-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cola-gym-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cola_gym
+      POSTGRES_PASSWORD: cola_gym
+      POSTGRES_DB: cola_gym
+    ports:
+      - "5433:5432"
+    volumes:
+      - cola_gym_postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cola_gym -d cola_gym"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ../backend
+      target: development
+    container_name: cola-gym-backend-dev
+    restart: unless-stopped
+    env_file:
+      - ../backend/.env.development
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: cola_gym
+      DB_PASSWORD: cola_gym
+      DB_DATABASE: cola_gym
+      DB_SSL: "false"
+      DB_SYNCHRONIZE: "false"
+      DB_DROP_SCHEMA: "false"
+      JWT_SECRET: dev-secret-change-me
+      JWT_EXPIRES_IN: 8h
+      ADMIN_EMAIL: owner@cola-gym.local
+      ADMIN_PASSWORD: owner123456
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/auth/login',{method:'OPTIONS'}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
+    volumes:
+      - backend_node_modules:/app/node_modules
+    develop:
+      watch:
+        - action: sync
+          path: ../backend/src
+          target: /app/src
+        - action: rebuild
+          path: ../backend/package.json
+        - action: rebuild
+          path: ../backend/package-lock.json
+
+  frontend:
+    build:
+      context: ../frontend
+      target: development
+    container_name: cola-gym-frontend-dev
+    restart: unless-stopped
+    env_file:
+      - ../frontend/.env.local
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      NEXT_PUBLIC_ROOT_DOMAIN: ${NEXT_PUBLIC_ROOT_DOMAIN:-localhost}
+      WATCHPACK_POLLING: "true"
+    ports:
+      - "3001:3001"
+    volumes:
+      - frontend_node_modules:/app/node_modules
+      - frontend_next:/app/.next
+    develop:
+      watch:
+        - action: sync
+          path: ../frontend/src
+          target: /app/src
+        - action: sync
+          path: ../frontend/public
+          target: /app/public
+        - action: rebuild
+          path: ../frontend/package.json
+        - action: rebuild
+          path: ../frontend/package-lock.json
+        - action: rebuild
+          path: ../frontend/next.config.ts
+
+volumes:
+  cola_gym_postgres_dev_data:
+  backend_node_modules:
+  frontend_node_modules:
+  frontend_next:
